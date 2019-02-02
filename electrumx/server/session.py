@@ -1137,8 +1137,23 @@ class ElectrumX(SessionBase):
         try:
             hex_hash = await self.session_mgr.broadcast_transaction(raw_tx)
             self.txs_sent += 1
-            self.logger.info(f'sent tx: {hex_hash}')
-            return hex_hash
+
+            version_tuple = lambda vstr: tuple(int(part) for part in vstr.split('.'))
+            try:
+                client_ver = version_tuple(self.client)
+            except:
+                client_ver = None
+            if client_ver is not None and client_ver < (3,3,3):
+                self.logger.info(f'sent tx: {hex_hash}. and warned user to upgrade their client from {self.client}')
+                return ('<br/><br/>'
+                        'Your transaction was successfully broadcast.<br/><br/>'
+                        'However, you are using a VULNERABLE version of Electrum.<br/>'
+                        'Download the new version from the usual place:<br/>'
+                        'https://electrum.org/'
+                        '<br/><br/>')
+            else:
+                self.logger.info(f'sent tx: {hex_hash}')
+                return hex_hash
         except DaemonError as e:
             error, = e.args
             message = error['message']
