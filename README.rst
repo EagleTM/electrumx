@@ -13,6 +13,9 @@ For a future network with bigger blocks.
   :Language: Python (>= 3.6)
   :Author: Neil Booth
 
+Note: This branch is "fork" of :code:`kyuupichan/electrumx/master`,
+that still supports protocol version 1.2.
+
 Documentation
 =============
 
