@@ -206,12 +206,17 @@ class BlockProcessor(object):
         if hprevs == chain:
             start = time.time()
             await self.run_in_thread_with_lock(self.advance_blocks, blocks)
+            time_advance_blocks = time.time() - start
             await self._maybe_flush()
+            time_maybe_flush = time.time() - time_advance_blocks - start
             if not self.db.first_sync:
-                s = '' if len(blocks) == 1 else 's'
-                self.logger.info('processed {:,d} block{} in {:.1f}s'
-                                 .format(len(blocks), s,
-                                         time.time() - start))
+                self.logger.info('processing {:,d} blocks. time taken by self.advance_blocks: {:.3f}s'
+                                 .format(len(blocks), time_advance_blocks))
+                self.logger.info('processing {:,d} blocks. time taken by self._maybe_flush: {:.3f}s'
+                                 .format(len(blocks), time_maybe_flush))
+                total_time = time.time() - start
+                self.logger.info('processed {:,d} blocks in {:.3f}s (total time)'
+                                 .format(len(blocks), total_time))
             if self._caught_up_event.is_set():
                 await self.notifications.on_block(self.touched, self.height)
             self.touched = set()
@@ -381,7 +386,12 @@ class BlockProcessor(object):
 
         for block in blocks:
             height += 1
+
+            start = time.time()
             undo_info = self.advance_txs(block.transactions)
+            self.logger.info('advance_blocks: advance_txs for height {:,d}. time taken: {:.3f}s'
+                             .format(height, time.time()-start))
+
             if height >= min_height:
                 self.undo_infos.append((undo_info, height))
                 self.db.write_raw_block(block.raw, height)
