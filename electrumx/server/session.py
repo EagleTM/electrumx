@@ -124,7 +124,7 @@ class SessionManager(object):
         self.cur_group = SessionGroup(0)
         self.txs_sent = 0
         self.start_time = time.time()
-        self.history_cache = pylru.lrucache(256)
+        self.history_cache = pylru.lrucache(1000)
         self.notified_height = None
         # Cache some idea of room to avoid recounting on each subscription
         self.subs_room = 0
@@ -135,6 +135,8 @@ class SessionManager(object):
         # Event triggered when electrumx is listening for incoming requests.
         self.server_listening = Event()
         self.session_event = Event()
+
+        self.map_from_ip_to_uselessdisconnect = defaultdict(int)
 
         # Set up the RPC request handlers
         cmds = ('add_peer daemon_url disconnect getinfo groups log peers '
@@ -216,6 +218,11 @@ class SessionManager(object):
                 for line in text.sessions_lines(data):
                     self.logger.info(line)
                 self.logger.info(json.dumps(self._get_info()))
+
+    async def _log_useless_connmap(self):
+        while True:
+            await sleep(60)
+            self.logger.info("map_from_ip_to_uselessdisconnect : " + json.dumps(self.map_from_ip_to_uselessdisconnect))
 
     def _group_map(self):
         group_map = defaultdict(list)
@@ -509,6 +516,7 @@ class SessionManager(object):
                 await group.spawn(self._clear_stale_sessions())
                 await group.spawn(self._log_sessions())
                 await group.spawn(self._manage_servers())
+                await group.spawn(self._log_useless_connmap())
         finally:
             # Close servers then sessions
             await self._close_servers(list(self.servers.keys()))
@@ -622,7 +630,7 @@ class SessionBase(RPCSession):
         self.client = 'unknown'
         self.anon_logs = self.env.anon_logs
         self.txs_sent = 0
-        self.log_me = False
+        self.log_me = True
         self.bw_limit = self.env.bandwidth_limit
         self.daemon_request = self.session_mgr.daemon_request
         # Hijack the connection so we can log messages
@@ -641,7 +649,7 @@ class SessionBase(RPCSession):
 
     def receive_message(self, message):
         if self.log_me:
-            self.logger.info(f'processing {message}')
+            self.logger.info(f'{self.kind} {self.peer_address_str()} {repr(message)}')
         return self._receive_message_orig(message)
 
     def toggle_logging(self):
@@ -678,9 +686,16 @@ class SessionBase(RPCSession):
         if self.send_size >= 1024*1024:
             msg += ('.  Sent {:,d} bytes in {:,d} messages'
                     .format(self.send_size, self.send_count))
-        if msg:
-            msg = 'disconnected' + msg
-            self.logger.info(msg)
+        if not msg:
+            if self.send_count == 0 and self.recv_count == 0:
+                msg = ' without ever sending messages'
+                addr = self.peer_address()
+                if addr:
+                    self.session_mgr.map_from_ip_to_uselessdisconnect[addr[0]] += 1
+            else:
+                msg = ' without reason'
+        msg = 'disconnected' + msg
+        self.logger.info(f'{self.kind} {self.peer_address_str()} {msg}')
         super().connection_lost(exc)
 
     def count_pending_items(self):
