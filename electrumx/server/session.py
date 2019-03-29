@@ -1256,7 +1256,7 @@ class ElectrumX(SessionBase):
             'blockchain.scripthash.get_history': self.scripthash_get_history,
             'blockchain.scripthash.get_mempool': self.scripthash_get_mempool,
             'blockchain.scripthash.listunspent': self.scripthash_listunspent,
-            'blockchain.scripthash.subscribe': self.scripthash_subscribe,
+            #'blockchain.scripthash.subscribe': self.scripthash_subscribe,
             'blockchain.transaction.broadcast': self.transaction_broadcast,
             'blockchain.transaction.get': self.transaction_get,
             'blockchain.transaction.get_merkle': self.transaction_merkle,
