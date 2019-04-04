@@ -1089,6 +1089,7 @@ class ElectrumX(SessionBase):
     async def relayfee(self):
         '''The minimum fee a low-priority tx must pay in order to be accepted
         to the daemon's memory pool.'''
+        return 0
         return await self.daemon_request('relayfee')
 
     async def estimatefee(self, number):
@@ -1097,6 +1098,7 @@ class ElectrumX(SessionBase):
 
         number: the number of blocks
         '''
+        return 0
         number = non_negative_integer(number)
         return await self.daemon_request('estimatefee', number)
 
