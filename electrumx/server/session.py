@@ -125,6 +125,7 @@ class SessionManager(object):
         self.txs_sent = 0
         self.start_time = time.time()
         self.history_cache = pylru.lrucache(10000)
+        self.history_status_cache = pylru.lrucache(100_000)
         self.notified_height = None
         # Cache some idea of room to avoid recounting on each subscription
         self.subs_room = 0
@@ -831,28 +832,29 @@ class ElectrumX(SessionBase):
 
         Status is a hex string, but must be None if there is no history.
         '''
-        # Note history is ordered and mempool unordered in electrum-server
-        # For mempool, height is -1 if it has unconfirmed inputs, otherwise 0
-        db_history = await self.session_mgr.limited_history(hashX)
-        mempool = await self.mempool.transaction_summaries(hashX)
+        if hashX not in self.session_mgr.history_status_cache:
+            # Note history is ordered and mempool unordered in electrum-server
+            # For mempool, height is -1 if it has unconfirmed inputs, otherwise 0
+            db_history = await self.session_mgr.limited_history(hashX)
+            mempool = await self.mempool.transaction_summaries(hashX)
 
-        status = ''.join(f'{hash_to_hex_str(tx_hash)}:'
-                         f'{height:d}:'
-                         for tx_hash, height in db_history)
-        status += ''.join(f'{hash_to_hex_str(tx.hash)}:'
-                          f'{-tx.has_unconfirmed_inputs:d}:'
-                          for tx in mempool)
-        if status:
-            status = sha256(status.encode()).hex()
-        else:
-            status = None
+            status = ''.join(f'{hash_to_hex_str(tx_hash)}:'
+                             f'{height:d}:'
+                             for tx_hash, height in db_history)
+            status += ''.join(f'{hash_to_hex_str(tx.hash)}:'
+                              f'{-tx.has_unconfirmed_inputs:d}:'
+                              for tx in mempool)
+            if status:
+                status = sha256(status.encode()).hex()
+            else:
+                status = None
 
-        if mempool:
-            self.mempool_statuses[hashX] = status
-        else:
-            self.mempool_statuses.pop(hashX, None)
-
-        return status
+            if mempool:
+                self.mempool_statuses[hashX] = status
+            else:
+                self.mempool_statuses.pop(hashX, None)
+            self.session_mgr.history_status_cache[hashX] = status
+        return self.session_mgr.history_status_cache[hashX]
 
     async def hashX_listunspent(self, hashX):
         '''Return the list of UTXOs of a script hash, including mempool
