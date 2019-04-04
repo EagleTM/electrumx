@@ -124,7 +124,7 @@ class SessionManager(object):
         self.cur_group = SessionGroup(0)
         self.txs_sent = 0
         self.start_time = time.time()
-        self.history_cache = pylru.lrucache(256)
+        self.history_cache = pylru.lrucache(10000)
         self.notified_height = None
         # Cache some idea of room to avoid recounting on each subscription
         self.subs_room = 0
@@ -622,7 +622,7 @@ class SessionBase(RPCSession):
         self.client = 'unknown'
         self.anon_logs = self.env.anon_logs
         self.txs_sent = 0
-        self.log_me = False
+        self.log_me = True
         self.bw_limit = self.env.bandwidth_limit
         self.daemon_request = self.session_mgr.daemon_request
         # Hijack the connection so we can log messages
