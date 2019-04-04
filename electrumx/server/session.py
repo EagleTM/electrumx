@@ -832,6 +832,7 @@ class ElectrumX(SessionBase):
 
         Status is a hex string, but must be None if there is no history.
         '''
+        return None
         if hashX not in self.session_mgr.history_status_cache:
             # Note history is ordered and mempool unordered in electrum-server
             # For mempool, height is -1 if it has unconfirmed inputs, otherwise 0
@@ -1249,21 +1250,21 @@ class ElectrumX(SessionBase):
         self.protocol_tuple = ptuple
 
         handlers = {
-            'blockchain.block.get_chunk': self.block_get_chunk,
-            'blockchain.block.get_header': self.block_get_header,
-            'blockchain.block.headers': self.block_headers_12,
+            #'blockchain.block.get_chunk': self.block_get_chunk,
+            #'blockchain.block.get_header': self.block_get_header,
+            #'blockchain.block.headers': self.block_headers_12,
             'blockchain.estimatefee': self.estimatefee,
             'blockchain.relayfee': self.relayfee,
-            'blockchain.scripthash.get_balance': self.scripthash_get_balance,
-            'blockchain.scripthash.get_history': self.scripthash_get_history,
-            'blockchain.scripthash.get_mempool': self.scripthash_get_mempool,
-            'blockchain.scripthash.listunspent': self.scripthash_listunspent,
+            #'blockchain.scripthash.get_balance': self.scripthash_get_balance,
+            #'blockchain.scripthash.get_history': self.scripthash_get_history,
+            #'blockchain.scripthash.get_mempool': self.scripthash_get_mempool,
+            #'blockchain.scripthash.listunspent': self.scripthash_listunspent,
             'blockchain.scripthash.subscribe': self.scripthash_subscribe,
-            'blockchain.transaction.broadcast': self.transaction_broadcast,
-            'blockchain.transaction.get': self.transaction_get,
-            'blockchain.transaction.get_merkle': self.transaction_merkle,
+            #'blockchain.transaction.broadcast': self.transaction_broadcast,
+            #'blockchain.transaction.get': self.transaction_get,
+            #'blockchain.transaction.get_merkle': self.transaction_merkle,
             'mempool.get_fee_histogram': self.mempool.compact_fee_histogram,
-            'server.add_peer': self.add_peer,
+            #'server.add_peer': self.add_peer,
             'server.banner': self.banner,
             'server.donation_address': self.donation_address,
             'server.features': self.server_features_async,
@@ -1277,22 +1278,22 @@ class ElectrumX(SessionBase):
                 'blockchain.block.header': self.block_header,
                 'blockchain.block.headers': self.block_headers,
                 'blockchain.headers.subscribe': self.headers_subscribe,
-                'blockchain.transaction.id_from_pos':
-                    self.transaction_id_from_pos,
+                #'blockchain.transaction.id_from_pos':
+                #    self.transaction_id_from_pos,
             })
         elif ptuple >= (1, 3):
             handlers.update({
-                'blockchain.block.header': self.block_header_13,
-                'blockchain.headers.subscribe': self.headers_subscribe_True,
+                #'blockchain.block.header': self.block_header_13,
+                #'blockchain.headers.subscribe': self.headers_subscribe_True,
             })
         else:
             handlers.update({
-                'blockchain.headers.subscribe': self.headers_subscribe_False,
-                'blockchain.address.get_balance': self.address_get_balance,
-                'blockchain.address.get_history': self.address_get_history,
-                'blockchain.address.get_mempool': self.address_get_mempool,
-                'blockchain.address.listunspent': self.address_listunspent,
-                'blockchain.address.subscribe': self.address_subscribe,
+                #'blockchain.headers.subscribe': self.headers_subscribe_False,
+                #'blockchain.address.get_balance': self.address_get_balance,
+                #'blockchain.address.get_history': self.address_get_history,
+                #'blockchain.address.get_mempool': self.address_get_mempool,
+                #'blockchain.address.listunspent': self.address_listunspent,
+                #'blockchain.address.subscribe': self.address_subscribe,
             })
 
         self.request_handlers = handlers
