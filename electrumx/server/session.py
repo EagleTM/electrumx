@@ -961,6 +961,7 @@ class ElectrumX(SessionBase):
         '''Subscribe to a script hash.
 
         scripthash: the SHA256 hash of the script to subscribe to'''
+        return None
         hashX = scripthash_to_hashX(scripthash)
         return await self.hashX_subscribe(hashX, scripthash)
 
