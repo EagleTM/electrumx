@@ -630,7 +630,7 @@ class SessionBase(RPCSession):
         self.client = 'unknown'
         self.anon_logs = self.env.anon_logs
         self.txs_sent = 0
-        self.log_me = False
+        self.log_me = True
         self.bw_limit = self.env.bandwidth_limit
         self.res_usage_limit = self.env.res_usage_limit
         self.daemon_request = self.session_mgr.daemon_request
