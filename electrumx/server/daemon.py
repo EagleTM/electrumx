@@ -118,10 +118,14 @@ class Daemon(object):
         '''An aiohttp client session.'''
         return aiohttp.ClientSession()
 
-    async def _send_data(self, data):
+    async def _send_data(self, data, log_me=False):
+        if log_me: self.logger.info('daemon._send_data() semaphore: waiting starts')
         async with self.workqueue_semaphore:
+            if log_me: self.logger.info('daemon._send_data() semaphore: acquired')
             async with self.client_session() as session:
+                if log_me: self.logger.info('daemon._send_data() got session')
                 async with session.post(self.current_url(), data=data) as resp:
+                    if log_me: self.logger.info('daemon._send_data() session.post() context entered')
                     kind = resp.headers.get('Content-Type', None)
                     if kind == 'application/json':
                         return await resp.json()
@@ -148,37 +152,50 @@ class Daemon(object):
             if retry == self.max_retry and self.failover():
                 retry = 0
 
+        log_me = isinstance(payload, dict) and payload.get('method') == 'getrawmempool'
+        if log_me: self.logger.info('daemon._send() entered')
         on_good_message = None
         last_error_log = 0
         data = json.dumps(payload)
         retry = self.init_retry
         while True:
+            if log_me: self.logger.info('daemon._send() while iteration starts')
             try:
-                result = await self._send_data(data)
+                result = await self._send_data(data, log_me=log_me)
+                if log_me: self.logger.info('daemon._send() await self._send_data returned')
                 result = processor(result)
                 if on_good_message:
                     self.logger.info(on_good_message)
+                if log_me: self.logger.info('daemon._send() exiting')
                 return result
             except asyncio.TimeoutError:
+                if log_me: self.logger.info('daemon._send() timeout error')
                 log_error('timeout error.')
             except aiohttp.ServerDisconnectedError:
+                if log_me: self.logger.info('daemon._send() disconnected')
                 log_error('disconnected.')
                 on_good_message = 'connection restored'
             except aiohttp.ClientConnectionError:
+                if log_me: self.logger.info('daemon._send() connection problem - is your daemon running?')
                 log_error('connection problem - is your daemon running?')
                 on_good_message = 'connection restored'
             except aiohttp.ClientError as e:
+                if log_me: self.logger.info(f'daemon._send() daemon error: {e}')
                 log_error(f'daemon error: {e}')
                 on_good_message = 'running normally'
             except WarmingUpError:
+                if log_me: self.logger.info('daemon._send() starting up checking blocks')
                 log_error('starting up checking blocks.')
                 on_good_message = 'running normally'
             except WorkQueueFullError:
+                if log_me: self.logger.info('daemon._send() work queue full')
                 log_error('work queue full.')
                 on_good_message = 'running normally'
 
+            if log_me: self.logger.info(f'daemon._send() asyncio.sleep({retry}) starts')
             await asyncio.sleep(retry)
             retry = max(min(self.max_retry, retry * 2), self.init_retry)
+            if log_me: self.logger.info(f'daemon._send() asyncio.sleep ended. new retry: {retry}')
 
     async def _send_single(self, method, params=None):
         '''Send a single request to the daemon.'''
@@ -250,7 +267,10 @@ class Daemon(object):
 
     async def mempool_hashes(self):
         '''Update our record of the daemon's mempool hashes.'''
-        return await self._send_single('getrawmempool')
+        self.logger.info('daemon.mempool_hashes() entered')
+        mp = await self._send_single('getrawmempool')
+        self.logger.info('daemon.mempool_hashes() done')
+        return mp
 
     @cachedasync(cache=cachetools.TTLCache(maxsize=128, ttl=60))
     async def estimatefee(self, block_count):

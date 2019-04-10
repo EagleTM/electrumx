@@ -213,26 +213,40 @@ class MemPool(object):
         # call transfers ownership
         touched = set()
         while True:
+            self.logger.info('mempool._refresh_hashes() while iteration starts')
             height = self.api.cached_height()
+            self.logger.info('mempool._refresh_hashes() sleep(0) sanity check starts')
+            await sleep(0)
+            self.logger.info('mempool._refresh_hashes() sleep(0) sanity check finished')
+            self.logger.info('mempool._refresh_hashes() await self.api.mempool_hashes()')
             hex_hashes = await self.api.mempool_hashes()
-            if height != await self.api.height():
+            self.logger.info('mempool._refresh_hashes() await self.api.height()')
+            height2 = await self.api.height()
+            self.logger.info(f'mempool._refresh_hashes() height {height}, height2 {height2}')
+            if height != height2:
                 continue
             hashes = set(hex_str_to_hash(hh) for hh in hex_hashes)
             try:
+                self.logger.info(f'mempool._refresh_hashes() lock: waiting starts')
                 async with self.lock:
+                    self.logger.info(f'mempool._refresh_hashes() lock: acquired')
                     await self._process_mempool(hashes, touched, height)
+                self.logger.info(f'mempool._refresh_hashes() processed mempool, released lock')
             except DBSyncError:
                 # The UTXO DB is not at the same height as the
                 # mempool; wait and try again
-                self.logger.debug('waiting for DB to sync')
+                self.logger.info('mempool._refresh_hashes(). waiting for DB to sync')
             else:
                 synchronized_event.set()
                 synchronized_event.clear()
+                self.logger.info(f'mempool._refresh_hashes(). await self.api.on_mempool. height {height}')
                 await self.api.on_mempool(touched, height)
                 touched = set()
+            self.logger.info(f'mempool._refresh_hashes(). sleeping...')
             await sleep(self.refresh_secs)
 
     async def _process_mempool(self, all_hashes, touched, mempool_height):
+        self.logger.info(f'mempool._process_mempool() entered')
         # Re-sync with the new set of hashes
         txs = self.txs
         hashXs = self.hashXs
@@ -241,6 +255,7 @@ class MemPool(object):
             raise DBSyncError
 
         # First handle txs that have disappeared
+        self.logger.info(f'mempool._process_mempool() First handle txs that have disappeared')
         for tx_hash in set(txs).difference(all_hashes):
             tx = txs.pop(tx_hash)
             tx_hashXs = set(hashX for hashX, value in tx.in_pairs)
@@ -252,31 +267,37 @@ class MemPool(object):
             touched.update(tx_hashXs)
 
         # Process new transactions
+        self.logger.info(f'mempool._process_mempool() Process new transactions')
         new_hashes = list(all_hashes.difference(txs))
         if new_hashes:
             group = TaskGroup()
+            self.logger.info(f'mempool._process_mempool() spawing tasks')
             for hashes in chunks(new_hashes, 200):
-                coro = self._fetch_and_accept(hashes, all_hashes, touched)
+                coro = self._fetch_and_accept(hashes, all_hashes, touched)  #
                 await group.spawn(coro)
             if mempool_height != self.api.db_height():
                 raise DBSyncError
 
             tx_map = {}
             utxo_map = {}
+            self.logger.info(f'mempool._process_mempool() async for task in group... 1')
             async for task in group:
                 deferred, unspent = task.result()
                 tx_map.update(deferred)
                 utxo_map.update(unspent)
+            self.logger.info(f'mempool._process_mempool() async for task in group... 2')
 
             prior_count = 0
             # FIXME: this is not particularly efficient
             while tx_map and len(tx_map) != prior_count:
+                self.logger.info(f'mempool._process_mempool() "while tx_map and len(tx_map) != prior_count" iteration')
                 prior_count = len(tx_map)
                 tx_map, utxo_map = self._accept_transactions(tx_map, utxo_map,
                                                              touched)
             if tx_map:
                 self.logger.error(f'{len(tx_map)} txs dropped')
 
+        self.logger.info(f'mempool._process_mempool() exiting')
         return touched
 
     async def _fetch_and_accept(self, hashes, all_hashes, touched):

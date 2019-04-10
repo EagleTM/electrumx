@@ -11,7 +11,7 @@ from aiorpcx import _version as aiorpcx_version, TaskGroup
 
 import electrumx
 from electrumx.lib.server_base import ServerBase
-from electrumx.lib.util import version_string
+from electrumx.lib.util import version_string, class_logger
 from electrumx.server.db import DB
 from electrumx.server.mempool import MemPool, MemPoolAPI
 from electrumx.server.session import SessionManager
@@ -34,15 +34,21 @@ class Notifications(object):
         self._touched_mp = {}
         self._touched_bp = {}
         self._highest_block = -1
+        self.logger = class_logger(__name__, self.__class__.__name__)
 
     async def _maybe_notify(self):
+        self.logger.info('Notifications._maybe_notify() entered')
         tmp, tbp = self._touched_mp, self._touched_bp
         common = set(tmp).intersection(tbp)
+        self.logger.info(f'Notifications._maybe_notify() tmp {tmp}, tbp {tbp}, common {common}, self._highest_block {self._highest_block}')
         if common:
+            self.logger.info(f'Notifications._maybe_notify() took branch 1')
             height = max(common)
         elif tmp and max(tmp) == self._highest_block:
+            self.logger.info(f'Notifications._maybe_notify() took branch 2')
             height = self._highest_block
         else:
+            self.logger.info(f'Notifications._maybe_notify() took branch 3. exiting')
             # Either we are processing a block and waiting for it to
             # come in, or we have not yet had a mempool update for the
             # new block height
@@ -52,6 +58,7 @@ class Notifications(object):
             del tmp[old]
         for old in [h for h in tbp if h <= height]:
             touched.update(tbp.pop(old))
+        self.logger.info(f'Notifications._maybe_notify() calling notify with height {height}')
         await self.notify(height, touched)
 
     async def notify(self, height, touched):
@@ -63,10 +70,12 @@ class Notifications(object):
         await self.notify(height, set())
 
     async def on_mempool(self, touched, height):
+        self.logger.info('Notifications.on_mempool() entered')
         self._touched_mp[height] = touched
         await self._maybe_notify()
 
     async def on_block(self, touched, height):
+        self.logger.info('Notifications.on_block() entered')
         self._touched_bp[height] = touched
         self._highest_block = height
         await self._maybe_notify()

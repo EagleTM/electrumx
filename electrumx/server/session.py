@@ -348,8 +348,10 @@ class SessionManager(object):
         '''Refresh the cached header subscription responses to be for height,
         and record that as notified_height.
         '''
+        self.logger.info(f'SessionManager._refresh_hsub_results() entered. height {height}')
         # Paranoia: a reorg could race and leave db_height lower
         height = min(height, self.db.db_height)
+        self.logger.info(f'SessionManager._refresh_hsub_results() entered. self.db.db_height {self.db.db_height}. so min height is {height}')
         electrum, raw = await self._electrum_and_raw_headers(height)
         self.hsub_results = (electrum, {'hex': raw.hex(), 'height': height})
         self.notified_height = height
@@ -572,6 +574,7 @@ class SessionManager(object):
 
     async def _notify_sessions(self, height, touched):
         '''Notify sessions about height changes and touched addresses.'''
+        self.logger.info(f'SessionManager._notify_sessions() entered. height {height}, self.notified_height {self.notified_height}')
         height_changed = height != self.notified_height
         if height_changed:
             await self._refresh_hsub_results(height)
@@ -583,6 +586,7 @@ class SessionManager(object):
         async with TaskGroup() as group:
             for session in self.sessions:
                 await group.spawn(session.notify, touched, height_changed)
+        self.logger.info(f'SessionManager._notify_sessions() exited. height_changed {height_changed}')
 
     def add_session(self, session):
         self.sessions.add(session)
@@ -630,7 +634,7 @@ class SessionBase(RPCSession):
         self.client = 'unknown'
         self.anon_logs = self.env.anon_logs
         self.txs_sent = 0
-        self.log_me = True
+        self.log_me = False
         self.bw_limit = self.env.bandwidth_limit
         self.res_usage_limit = self.env.res_usage_limit
         self.daemon_request = self.session_mgr.daemon_request
