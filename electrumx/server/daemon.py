@@ -17,6 +17,8 @@ from struct import pack
 from time import strptime
 
 import aiohttp
+import cachetools
+from cachetools import keys, _update_wrapper
 
 from electrumx.lib.util import hex_to_bytes, class_logger,\
     unpack_le_uint16_from, pack_varint
@@ -35,6 +37,31 @@ class WarmingUpError(Exception):
 
 class WorkQueueFullError(Exception):
     '''Internal - when the daemon's work queue is full.'''
+
+
+def cachedasync(cache, key=keys.hashkey):
+    """Decorator to wrap a coroutine function with a memoizing function
+    that saves results in a cache.
+     """
+    def decorator(func):
+        if cache is None:
+            async def wrapper(*args, **kwargs):
+                return await func(*args, **kwargs)
+        else:
+            async def wrapper(*args, **kwargs):
+                k = key(*args, **kwargs)
+                try:
+                    return cache[k]
+                except KeyError:
+                    pass  # key not found
+                v = await func(*args, **kwargs)
+                try:
+                    cache[k] = v
+                except ValueError:
+                    pass  # value too large
+                return v
+        return _update_wrapper(wrapper, func)
+    return decorator
 
 
 class Daemon(object):
@@ -225,6 +252,7 @@ class Daemon(object):
         '''Update our record of the daemon's mempool hashes.'''
         return await self._send_single('getrawmempool')
 
+    @cachedasync(cache=cachetools.TTLCache(maxsize=128, ttl=60))
     async def estimatefee(self, block_count):
         '''Return the fee estimate for the block count.  Units are whole
         currency units per KB, e.g. 0.00000995, or -1 if no estimate
@@ -236,6 +264,7 @@ class Daemon(object):
             return estimate.get('feerate', -1)
         return await self._send_single('estimatefee', args)
 
+    @cachedasync(cache=cachetools.TTLCache(maxsize=1, ttl=60))
     async def getnetworkinfo(self):
         '''Return the result of the 'getnetworkinfo' RPC call.'''
         return await self._send_single('getnetworkinfo')
