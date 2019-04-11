@@ -70,7 +70,7 @@ class Daemon(object):
     WARMING_UP = -28
     id_counter = itertools.count()
 
-    def __init__(self, coin, url, max_workqueue=10, init_retry=0.25,
+    def __init__(self, coin, url, max_workqueue=100, init_retry=0.25,
                  max_retry=4.0):
         self.coin = coin
         self.logger = class_logger(__name__, self.__class__.__name__)
