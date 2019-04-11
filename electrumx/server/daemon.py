@@ -119,12 +119,11 @@ class Daemon(object):
         return aiohttp.ClientSession()
 
     async def _send_data(self, data, log_me=False):
-        if log_me: self.logger.info('daemon._send_data() semaphore: waiting starts')
-        async with self.workqueue_semaphore:
+        async def f():
             if log_me: self.logger.info('daemon._send_data() semaphore: acquired')
             async with self.client_session() as session:
                 if log_me: self.logger.info('daemon._send_data() got session')
-                async with session.post(self.current_url(), data=data) as resp:
+                async with session.post(self.current_url(), data=data, timeout=15) as resp:
                     if log_me: self.logger.info('daemon._send_data() session.post() context entered')
                     kind = resp.headers.get('Content-Type', None)
                     if kind == 'application/json':
@@ -136,6 +135,10 @@ class Daemon(object):
                     text = text.strip() or resp.reason
                     self.logger.error(text)
                     raise DaemonError(text)
+
+        if log_me: self.logger.info('daemon._send_data() semaphore: waiting starts')
+        async with self.workqueue_semaphore:
+            return await f()
 
     async def _send(self, payload, processor):
         '''Send a payload to be converted to JSON.
