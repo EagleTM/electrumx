@@ -1643,7 +1643,7 @@ class BitcoinSegwitElectrumX(ElectrumX):
         is_old_protocol = proto_ver is None or proto_ver <= (1, 2)
         is_old_client = client_ver != (0,) and client_ver < (3, 2, 4)
         if is_old_protocol and is_old_client:
-            self.logger.info(f'attempting to crash old client with version {self.client}')
+            #self.logger.info(f'attempting to crash old client with version {self.client}')
             # this can crash electrum client 2.6 <= v < 3.1.2
             await self.send_notification('blockchain.relayfee', ())
             # this can crash electrum client (v < 2.8.2) UNION (3.0.0 <= v < 3.3.0)
