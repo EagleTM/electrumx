@@ -725,7 +725,7 @@ class SessionBase(RPCSession):
         last_time = self.session_mgr.res_usage_last[bucket] or now
         res_usage = self.session_mgr.res_usage_of_ip[bucket]
         # Reduce the recorded usage in proportion to the elapsed time
-        refund = (now - last_time) * (self.res_usage_limit / 86400)
+        refund = (now - last_time) * (self.res_usage_limit / 14400)
         res_usage = max(0, res_usage - refund) + cost
         self.session_mgr.res_usage_of_ip[bucket] = res_usage
         self.session_mgr.res_usage_last[bucket] = now
@@ -736,8 +736,11 @@ class SessionBase(RPCSession):
         bucket = self._bucket_for_resource_usage()
         res_usage = self.session_mgr.res_usage_of_ip[bucket]
         sleep_time = res_usage / self.res_usage_limit - 1
-        if sleep_time > 30:
+        if res_usage > self.res_usage_limit:
+            self.logger.info(f'close session over res usage for {ip_address(self.peer_address()[0])}')
             raise FinalRPCError(BAD_REQUEST, 'session is using too much resources')
+        #if sleep_time > 30:
+        #    raise FinalRPCError(BAD_REQUEST, 'session is using too much resources')
         if sleep_time > 0:
             await sleep(sleep_time)
 
