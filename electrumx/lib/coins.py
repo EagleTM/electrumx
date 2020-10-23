@@ -437,7 +437,7 @@ class BitcoinSegwit(BitcoinMixin, Coin):
         'electrum4.hodlister.co s50002',
         'electrum5.hodlister.co s50002',
         'electrum6.hodlister.co s50002',
-		'electrum7.hodlister.co s50002',
+	'electrum7.hodlister.co s50002',
         'electrum8.hodlister.co s50002',
         'electrum9.hodlister.co s50002',
         'electrum10.hodlister.co s50002',
