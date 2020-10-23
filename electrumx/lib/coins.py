@@ -430,17 +430,16 @@ class BitcoinSegwit(BitcoinMixin, Coin):
     BLACKLIST_URL = 'https://electrum.org/blacklist.json'
     RESOURCE_USAGE_LIMIT = 30_000
     PEERS = [
-        'btc.smsys.me s995',
-        'E-X.not.fyi s t',
-        'elec.luggs.co s443',
-        'electrum.vom-stausee.de s t',
         'electrum.hsmiths.com s t',
         'helicarrier.bauerj.eu s t',
-        'hsmiths4fyqlw5xw.onion s t',
-        'luggscoqbymhvnkp.onion t80',
-        'ozahtqwp25chjdjd.onion s t',
-        'node.arihanc.com s t',
-        'arihancckjge66iv.onion s t',
+        'electrum2.hodlister.co s50002',
+        'electrum3.hodlister.co s50002',
+        'electrum4.hodlister.co s50002',
+        'electrum5.hodlister.co s50002',
+        'electrum6.hodlister.co s50002',
+        'electrum.emzy.de s50002',
+        'fortress.qtornado.com s443',
+        'bitcoin.grey.pw s50004 t50003',
     ]
 
     @classmethod
